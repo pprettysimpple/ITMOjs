@@ -17,15 +17,16 @@ Const.prototype.prefix = Const.prototype.toString;
 
 // Variable
 
-const Variable = function(val) {
-	this.val = val;
-};
 Variable.VARIABLES = {
 	"x": 0,
 	"y": 1,
 	"z": 2
 };
-Variable.prototype.evaluate = function(...vars) { return vars[Variable.VARIABLES[this.val]]};
+const Variable = function(val) {
+	this.val = val;
+	this.index = Variable.VARIABLES[val];
+};
+Variable.prototype.evaluate = function(...vars) { return vars[this.index]};
 Variable.prototype.diff = function(t) {
 	return (t === this.val ? Const.CONSTANTS.one : Const.CONSTANTS.zero);
 }
