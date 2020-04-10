@@ -17,14 +17,14 @@ Const.prototype.prefix = Const.prototype.toString;
 
 // Variable
 
+const Variable = function(val) {
+	this.val = val;
+	this.index = Variable.VARIABLES[val];
+};
 Variable.VARIABLES = {
 	"x": 0,
 	"y": 1,
 	"z": 2
-};
-const Variable = function(val) {
-	this.val = val;
-	this.index = Variable.VARIABLES[val];
 };
 Variable.prototype.evaluate = function(...vars) { return vars[this.index]};
 Variable.prototype.diff = function(t) {
@@ -48,24 +48,27 @@ Operation.prototype.diff = function(t) {
 	return this.howDiff(t, ...this.args);
 }
 Operation.prototype.toString = function() {
-	return this.args.reduce((result, token) => (result += token.toString() + " "), "") + this.constructor.token;
+	let cur = this.args.map((tmp) => tmp.toString());
+	return cur.join(' ') + ' ' + this.token;
 };
 Operation.prototype.prefix = function() {
-	return '(' + this.token + this.args.reduce((result, token) => (result += " " + token.prefix()), "") + ')';
+	let cur = this.args.map((tmp) => tmp.toString());
+	return '(' + this.token + ' ' + cur.join(' ') + ')';
 };
 let OPERATIONS = {
 };
 const makeOperation = (calc, howDiff, token, varCount) => {
-	let cur = function(...args) {
+	let Op = function(...args) {
 		Operation.call(this, ...args);
 	}
-	cur.prototype = Object.create(Operation.prototype);
-	cur.prototype.token = token;
-	cur.varCount = varCount;
-	cur.prototype.calc = calc;
-	cur.prototype.howDiff = howDiff;
-	OPERATIONS[token] = cur;
-	return cur;
+	Op.prototype = Object.create(Operation.prototype);
+	Op.prototype.token = token;
+	Op.varCount = varCount;
+	Op.prototype.calc = calc;
+	Op.prototype.howDiff = howDiff;
+	Op.prototype.constructor = Op;
+	OPERATIONS[token] = Op;
+	return Op;
 };
 const Add = makeOperation(
 	(a, b) => a + b,
@@ -101,6 +104,7 @@ const Negate = makeOperation(
 const Gauss = makeOperation(
 	(a, b, c, x) => (a * Math.exp(-(x - b) * (x - b) / (2 * c * c))),
 	(t, a, b, c, x) => {
+		let subxb = new Subtract(x, b);
 		return new Add(
 			new Multiply(
 				a.diff(t),
@@ -110,7 +114,7 @@ const Gauss = makeOperation(
 				new Gauss(a, b, c, x),
 				new Negate(
 					new Divide(
-						new Multiply(new Subtract(x, b), new Subtract(x, b)),
+						new Multiply(subxb, subxb),
 						new Multiply(Const.CONSTANTS.two, new Multiply(c, c))
 					).diff(t)
 				)
@@ -155,6 +159,7 @@ const parserErrors = (() => {
 		}
 		cur.prototype = Object.create(Error.prototype);
 		cur.prototype.name = name;
+		cur.prototype.constructor = cur;
 		return cur;
 	}
 	const UnexpectedTokenError = makeError("UnexpectedTokenError");
@@ -259,5 +264,6 @@ const parsePrefix = function(input) {
 	return ret;
 }
 
-// let exp = parsePrefix("(+ x as)")
+let exp = parsePrefix("(+ x x)")
+console.log(exp.prefix())
 // console.log(exp.evaluate(1, 2, 3))

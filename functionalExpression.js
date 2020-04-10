@@ -15,17 +15,12 @@ const CONSTANTS = {
   "two": two
 }
 const variable = (s) => VARIABLES[s];
-// мне очень трудно понимать эти выражения если писать без явных скобок и return, извините
-const getOperation = (operation) => {
-	return (...operands) => {
-		return (...args) => operation(...operands.map((exp) => exp(...args)));
-	};
-};
+const getOperation = (operation) => (...operands) => (...args) => operation(...operands.map((exp) => exp(...args)));
 const add = getOperation((a, b) => a + b);
 const subtract = getOperation((a, b) => a - b);
 const multiply = getOperation((a, b) => a * b);
 const divide = getOperation((a, b) => a / b);
-const negate = getOperation((a) => -a);
+const negate = getOperation(a => -a);
 
 // parser
 const opInfo = function(type, size) {
