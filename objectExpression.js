@@ -4,14 +4,13 @@
 
 const Const = function(val) {
 	this.val = val;
-}
-Const.CONSTANTS = {
-	"zero": new Const(0),
-	"one": new Const(1),
-	"two": new Const(2)
-}
+};
+// mod Const.CONSTANTS.x --> Const.x
+Const.zero = new Const(0);
+Const.one = new Const(1);
+Const.two = new Const(2);
 Const.prototype.evaluate = function() { return this.val; };
-Const.prototype.diff = () => Const.CONSTANTS.zero;
+Const.prototype.diff = () => Const.zero;
 Const.prototype.toString = function() { return "" + this.val; };
 Const.prototype.prefix = Const.prototype.toString;
 
@@ -19,17 +18,16 @@ Const.prototype.prefix = Const.prototype.toString;
 
 const Variable = function(val) {
 	this.val = val;
-	this.index = Variable.VARIABLES[val];
+	this.index = Variable[val];
 };
-Variable.VARIABLES = {
-	"x": 0,
-	"y": 1,
-	"z": 2
-};
+// mod Variable.VARIABLES.x --> Variable.x
+Variable.x = 0;
+Variable.y = 1;
+Variable.z = 2;
 Variable.prototype.evaluate = function(...vars) { return vars[this.index]};
 Variable.prototype.diff = function(t) {
-	return (t === this.val ? Const.CONSTANTS.one : Const.CONSTANTS.zero);
-}
+	return (t === this.val ? Const.one : Const.zero);
+};
 Variable.prototype.toString = function() { return this.val};
 Variable.prototype.prefix = Variable.prototype.toString;
 
@@ -46,13 +44,13 @@ Operation.prototype.evaluate = function(...vars) {
 };
 Operation.prototype.diff = function(t) {
 	return this.howDiff(t, ...this.args);
-}
+};
 Operation.prototype.toString = function() {
 	let cur = this.args.map((tmp) => tmp.toString());
 	return cur.join(' ') + ' ' + this.token;
 };
 Operation.prototype.prefix = function() {
-	let cur = this.args.map((tmp) => tmp.toString());
+	let cur = this.args.map((tmp) => tmp.prefix());
 	return '(' + this.token + ' ' + cur.join(' ') + ')';
 };
 let OPERATIONS = {
@@ -60,10 +58,10 @@ let OPERATIONS = {
 const makeOperation = (calc, howDiff, token, varCount) => {
 	let Op = function(...args) {
 		Operation.call(this, ...args);
-	}
+	};
 	Op.prototype = Object.create(Operation.prototype);
 	Op.prototype.token = token;
-	Op.varCount = varCount;
+	Op.varCount = calc.length;
 	Op.prototype.calc = calc;
 	Op.prototype.howDiff = howDiff;
 	Op.prototype.constructor = Op;
@@ -73,20 +71,17 @@ const makeOperation = (calc, howDiff, token, varCount) => {
 const Add = makeOperation(
 	(a, b) => a + b,
 	(t, a, b) => new Add(a.diff(t), b.diff(t)),
-	"+",
-	2);
+	"+");
 const Subtract = makeOperation(
 	(a, b) => (a - b),
 	(t, a, b) => new Subtract(a.diff(t), b.diff(t)),
-	"-",
-	2);
+	"-");
 const Multiply = makeOperation(
 	(a, b) => (a * b),
 	(t, a, b) => new Add(
 		new Multiply(a, b.diff(t)),
 		new Multiply(a.diff(t), b)),
-	"*",
-	2);
+	"*");
 const Divide = makeOperation(
 	(a, b) => (a / b),
 	(t, a, b) => new Divide(
@@ -94,13 +89,11 @@ const Divide = makeOperation(
 			new Multiply(a.diff(t), b),
 			new Multiply(a, b.diff(t))),
 		new Multiply(b, b)),
-	"/",
-	2);
+	"/");
 const Negate = makeOperation(
 	(a) => (-a),
 	(t, a) => new Negate(a.diff(t)),
-	"negate",
-	1);
+	"negate");
 const Gauss = makeOperation(
 	(a, b, c, x) => (a * Math.exp(-(x - b) * (x - b) / (2 * c * c))),
 	(t, a, b, c, x) => {
@@ -108,21 +101,20 @@ const Gauss = makeOperation(
 		return new Add(
 			new Multiply(
 				a.diff(t),
-				new Gauss(Const.CONSTANTS.one, b, c, x)
+				new Gauss(Const.one, b, c, x)
 			),
 			new Multiply(
 				new Gauss(a, b, c, x),
 				new Negate(
 					new Divide(
 						new Multiply(subxb, subxb),
-						new Multiply(Const.CONSTANTS.two, new Multiply(c, c))
+						new Multiply(Const.two, new Multiply(c, c))
 					).diff(t)
 				)
 			)
 		)
 	},
-	"gauss",
-	4);
+	"gauss");
 
 // parser
 
@@ -136,10 +128,10 @@ const parse = (input) => {
 					stack.length - op.varCount
 				);
 				stack.push(new op(...suffix));
-			} else if (token in Variable.VARIABLES) {
+			} else if (token in Variable) {
 				stack.push(new Variable(token));
-			} else if (token in Const.CONSTANTS) {
-				stack.push(Const.CONSTANTS[token]);
+			} else if (token in Const) {
+				stack.push(Const[token]);
 			} else {
 				// it's a number
 				stack.push(new Const(parseFloat(token)));
@@ -150,29 +142,31 @@ const parse = (input) => {
 	).pop();
 };
 
+// here is 8th HW in progress
+
 // parsePrefix
 
 const parserErrors = (() => {
 	const makeError = function(name) {
 		let cur = function(message) {
 			this.message = message;
-		}
+		};
 		cur.prototype = Object.create(Error.prototype);
 		cur.prototype.name = name;
 		cur.prototype.constructor = cur;
 		return cur;
-	}
+	};
 	const UnexpectedTokenError = makeError("UnexpectedTokenError");
 	const InvalidTokenError = makeError("InvalidTokenError");
 	return {
 		"UnexpectedTokenError": UnexpectedTokenError,
 		"InvalidTokenError": InvalidTokenError
 	}
-})()
+})();
 
 const parsePrefix = function(input) {
-	let InvalidTokenError = parserErrors.InvalidTokenError
-	let UnexpectedTokenError = parserErrors.UnexpectedTokenError
+	let InvalidTokenError = parserErrors.InvalidTokenError;
+	let UnexpectedTokenError = parserErrors.UnexpectedTokenError;
 	let getTokenizer = function(source) {
 		let pos = 0;
 		let lastToken;
@@ -187,7 +181,7 @@ const parsePrefix = function(input) {
 			while (test(' ')) {
 				// skip
 			}
-		}
+		};
 		let getPrefixToken = () => {
 			let end = pos;
 			while (end < source.length && source[end] != '(' && source[end] != ')' && source[end] != ' ') {
@@ -196,7 +190,7 @@ const parsePrefix = function(input) {
 			let ret = source.substr(pos, end - pos);
 			pos = end;
 			return ret;
-		}
+		};
 		return {
 			"getNext": () => {
 				skipWhitespaces();
@@ -212,7 +206,7 @@ const parsePrefix = function(input) {
 			"getCurrentPrefix": () => source.substr(0, pos),
 			"getCurrentToken": () => lastToken
 		}
-	}
+	};
 	let tokenizer = getTokenizer(input);
 	const parseExpression = () => {
 		if (tokenizer.getCurrentToken() == '(') {
@@ -236,13 +230,13 @@ const parsePrefix = function(input) {
 		} else {
 			return parseTerm();
 		}
-	}
+	};
 	const parseTerm = () => {
 		let cur = tokenizer.getCurrentToken();
 		let ret;
-		if (cur in Const.CONSTANTS) {
-			ret = Const.CONSTANTS[cur];
-		} else if (cur in Variable.VARIABLES) {
+		if (cur in Const) {
+			ret = Const[cur];
+		} else if (cur in Variable) {
 			ret = new Variable(cur);
 		} else {
 			let tmp = Number(cur);
@@ -254,7 +248,7 @@ const parsePrefix = function(input) {
 		}
 		tokenizer.getNext();
 		return ret;
-	}
+	};
 
 	tokenizer.getNext();
 	let ret = parseExpression();
@@ -262,8 +256,10 @@ const parsePrefix = function(input) {
 		throw new UnexpectedTokenError("expected no tokens, found one.\n" + tokenizer.getCurrentPrefix() + "<---Error");
 	}
 	return ret;
-}
+};
 
-let exp = parsePrefix("(+ x x)")
-console.log(exp.prefix())
+// let exp = parsePrefix("(+ x x)")
+// console.log(exp.prefix())
 // console.log(exp.evaluate(1, 2, 3))
+// let expr = new Divide(new Negate(new Variable('x')), new Const(2))
+// console.log(expr.prefix());
